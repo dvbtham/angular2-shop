@@ -20,7 +20,7 @@ export class ShoppingCartService {
   async getCart(): Promise<Observable<ShoppingCart>> {
     const cartId = await this.getOrCreateCartId();
     return this.db.object('/shopping-carts/' + cartId)
-    .map(x => new ShoppingCart(x.items));
+      .map(x => new ShoppingCart(x.items));
   }
 
   private async getOrCreateCartId(): Promise<string> {
@@ -29,6 +29,11 @@ export class ShoppingCartService {
     const res = await this.create();
     localStorage.setItem('cartId', res.key);
     return res.key;
+  }
+
+  async clearCart() {
+    const cartId = await this.getOrCreateCartId();
+    this.db.object('/shopping-carts/' + cartId + '/items').remove();
   }
 
   private getCartId(cartId, productId: string) {
@@ -48,11 +53,14 @@ export class ShoppingCartService {
     const item$ = this.getCartId(cartId, product.$key);
 
     item$.take(1).subscribe(item => {
-      item$.update({
+      const quantity = (item.quantity || 0) + change;
+      if (quantity === 0) item$.remove();
+      else item$.update({
         title: product.title,
         imageUrl: product.imageUrl,
         price: product.price,
-        quantity: (item.quantity || 0) + change });
+        quantity: quantity
+      });
     });
   }
 }
